@@ -16,7 +16,7 @@ class LoginPage extends StatelessWidget {
       final user = await authenticationService.login();
       if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login failed. Please try again.')),
+          const SnackBar(content: Text('Login failed. Please try again.')),
         );
         return;
       } else {
@@ -32,17 +32,17 @@ class LoginPage extends StatelessWidget {
           log('Logged in as: $schoolName');
 
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => HomeScreen()),
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('School name not found. Please try again.')),
+            const SnackBar(content: Text('School name not found. Please try again.')),
           );
         }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred. Please try again.')),
+        const SnackBar(content: Text('An error occurred. Please try again.')),
       );
       log('Login error: ${e.toString()}');
     }

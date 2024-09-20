@@ -1,17 +1,13 @@
 import 'dart:developer';
-
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:get_it/get_it.dart';
-import 'package:hive/hive.dart';
-import 'package:msap/models/student.dart';
 import 'package:msap/services/golain_api_services.dart';
-import 'package:msap/utils.dart';
+import 'package:get_it/get_it.dart';
+
 
 Future<bool> submitEvaluationFromHive(
     Map<String, dynamic> evaluationData) async {
   final getIt = GetIt.instance;
 
-  final golainApiService = getIt<GolainApiService>();
+  // final golainApiService = getIt<GolainApiService>();
   // Ensure that all required fields are present and valid
   final preparedData = {
     "school_name": evaluationData['school_name'] ?? '',
@@ -76,4 +72,3 @@ Future<bool> submitEvaluationFromHive(
     return false;
   }
 }
-

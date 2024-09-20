@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:bloc/bloc.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hive/hive.dart';
@@ -48,23 +50,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
-  // void _onFetchDivisionsEvent(
-  //     FetchDivisionsEvent event, Emitter<HomeState> emit) async {
-  //   emit(HomeLoading());
-  //   try {
-  //     final data = await apiService.getGradesAndDivisions(event.school);
-  //     List<String> divisions = data['data']
-  //         .where((item) => item['grade'] == event.grade)
-  //         .map<String>((item) => item['division'] as String)
-  //         .toList();
-
-  //     divisions.sort();
-
-  //     emit(DivisionsLoaded(divisions: divisions));
-  //   } catch (e) {
-  //     emit(HomeError("Failed to fetch divisions"));
-  //   }
-  // }
+  
 
   void _onFetchDivisionsEvent(
       FetchDivisionsEvent event, Emitter<HomeState> emit) async {
@@ -84,7 +70,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
             .toList();
 
         divisions.sort();
-        print('Fetched data from Hive: $divisions');
+        log('Fetched data from Hive: $divisions');
         emit(DivisionsLoaded(divisions: divisions));
       } else {
         // Internet is available, fetch data from API
@@ -95,7 +81,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
             .toList();
 
         divisions.sort();
-        print('Fetched data from API: $divisions');
+        log('Fetched data from API: $divisions');
 
         // Save the fetched data to Hive for offline use
         await hiveService.saveGradesAndDivisions(
@@ -111,22 +97,6 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
-  // New function to handle fetching grades and divisions
-  // void _onFetchGradesAndDivisionsEvent(
-  //     FetchGradesAndDivisionsEvent event, Emitter<HomeState> emit) async {
-  //   emit(HomeLoading());
-  //   try {
-  //     // Fetch grades and divisions from the API
-  //     final data = await apiService.getGradesAndDivisions(event.schoolName);
-  //     // Emit the state with the fetched data
-  //     emit(GradesAndDivisionsLoaded(
-  //         grades: data['grades']!, divisions: data['divisions']!));
-  //   } catch (e) {
-  //     emit(HomeError("please Restart the App."));
-  //   }
-  // }
-
-  // New function to handle fetching grades and divisions
 
   void _onFetchGradesAndDivisionsEvent(
       FetchGradesAndDivisionsEvent event, Emitter<HomeState> emit) async {
@@ -144,11 +114,11 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         // Store the fetched data in Hive for offline use
         var box = await Hive.openBox('gradesDivisionsBox');
         await box.put('grades', data['grades']);
-        print(
+        log(
           " home bloc from api grade:${box.put('grades', data['grades'])}",
         );
         await box.put('divisions', data['divisions']);
-        print(
+        log(
           " home bloc from api divisions:${box.put('divisions', data['divisions'])}",
         );
 
@@ -161,9 +131,9 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         // No network, fetch data from Hive
         var box = await Hive.openBox('gradesDivisionsBox');
         final grades = box.get('grades');
-        print(" home bloc from hive grades:${box.get('grades')}");
+        log(" home bloc from hive grades:${box.get('grades')}");
         final divisions = box.get('divisions');
-        print(" home bloc from hive divisions:${box.get('divisions')}");
+        log(" home bloc from hive divisions:${box.get('divisions')}");
 
         if (grades != null && divisions != null) {
           // Emit the state with the data from Hive

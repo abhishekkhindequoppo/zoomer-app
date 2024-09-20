@@ -149,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
               selectedGrade = state.grades[index];
               final prefs = await SharedPreferences.getInstance();
               await prefs.setString('selectedGrade', selectedGrade);
-              log('Selected grade: ${selectedGrade}');
+              log('Selected grade: $selectedGrade');
               _homeBloc.add(NavigateEvent(grade: selectedGrade));
             },
             title: Text(

@@ -1,60 +1,5 @@
-// import 'package:hive/hive.dart';
-
-// class HiveService {
-//   // Method to save data to Hive
-//   Future<void> saveStudentData(List<Map<String, dynamic>> students) async {
-//     final studentBox = await Hive.openBox('studentBox');
-//     await studentBox.clear(); // Clear existing data before saving new data
-//     for (var student in students) {
-//       await studentBox.add(student);
-//     }
-//     print('Data saved successfully 1');
-//   }
-
-//   // Method to fetch data from Hive
-//   Future<List<Map<String, dynamic>>> getStudentData() async {
-//     final studentBox = await Hive.openBox('studentBox');
-//     final students = studentBox.values.toList();
-//     print('Data fetched successfully 2');
-//     return students.cast<Map<String, dynamic>>();
-//   }
-
-//   // Method to save pending student data in Hive for offline mode
-//   Future<void> savePendingStudentData(Map<String, dynamic> studentData) async {
-//     final studentBox = await Hive.openBox('studentPendingBox');
-//     await studentBox.add(studentData);
-//     print('Pending data saved successfully 4');
-//   }
-
-//   // Method to save grades and divisions data in Hive
-//   Future<void> saveGradesAndDivisions(List<String> grades,
-//       List<String> divisions, List<dynamic> rawData) async {
-//     final box = await Hive.openBox('gradesDivisionsBox');
-//     await box.put('grades', grades);
-//     await box.put('divisions', divisions);
-//     await box.put('data', rawData);
-//     print('Grades and divisions saved successfully 7');
-//   }
-
-//   // Method to get grades and divisions from Hive
-//   Future<Map<String, dynamic>> getGradesAndDivisionsFromHive() async {
-//     final box = await Hive.openBox('gradesDivisionsBox');
-//     final grades = box.get('grades', defaultValue: []);
-//     final divisions = box.get('divisions', defaultValue: []);
-//     final rawData = box.get('data', defaultValue: []);
-//     print('Grades and divisions fetched successfully 8');
-
-//     return {
-//       'grades': grades,
-//       'divisions': divisions,
-//       'data': rawData,
-//     };
-//   }
-
-// }
-
 import 'dart:convert';
-
+import 'dart:developer';
 import 'package:hive/hive.dart';
 
 class HiveService {
@@ -64,7 +9,7 @@ class HiveService {
     final studentBox = await Hive.openBox('studentBox');
     final key = '$grade-$division';
     await studentBox.put(key, students);
-    print('Data saved successfully for $grade $division');
+    log('Data saved successfully for $grade $division');
   }
 
   Future<List<Map<String, dynamic>>> getStudentData(
@@ -73,7 +18,7 @@ class HiveService {
     final key = '$grade-$division';
     final students = studentBox.get(key, defaultValue: []);
 
-    print('Data fetched successfully for $grade $division');
+    log('Data fetched successfully for $grade $division');
 
     // Ensure that the fetched data is cast as List<Map<String, dynamic>>
     return List<Map<String, dynamic>>.from(
@@ -84,7 +29,7 @@ class HiveService {
   Future<void> savePendingStudentData(Map<String, dynamic> studentData) async {
     final studentBox = await Hive.openBox('studentPendingBox');
     await studentBox.add(studentData);
-    print('Pending data saved successfully');
+    log('Pending data saved successfully');
   }
 
   // Method to save grades and divisions data in Hive
@@ -94,7 +39,7 @@ class HiveService {
     await box.put('grades', grades);
     await box.put('divisions', divisions);
     await box.put('data', rawData);
-    print('Grades and divisions saved successfully');
+    log('Grades and divisions saved successfully');
   }
 
   // Method to get grades and divisions from Hive
@@ -103,7 +48,7 @@ class HiveService {
     final grades = box.get('grades', defaultValue: []);
     final divisions = box.get('divisions', defaultValue: []);
     final rawData = box.get('data', defaultValue: []);
-    print('Grades and divisions fetched successfully');
+    log('Grades and divisions fetched successfully');
 
     return {
       'grades': grades,
@@ -112,25 +57,6 @@ class HiveService {
     };
   }
 
-  // // Method to clear grades and divisions from Hive (if needed)
-  // Future<void> clearGradesAndDivisions() async {
-  //   final box = await Hive.openBox('gradesDivisionsBox');
-  //   await box.clear();
-  // }
-
-  // // Method to retrieve pending student data from Hive (if needed)
-  // Future<List<Map<String, dynamic>>> getPendingStudentData() async {
-  //   final studentBox = await Hive.openBox('studentPendingBox');
-  //   print('Pending data fetched successfully');
-  //   return studentBox.values.cast<Map<String, dynamic>>().toList();
-  // }
-
-  // // Method to clear the pending student data from Hive after sync
-  // Future<void> clearPendingData() async {
-  //   final studentBox = await Hive.openBox('studentPendingBox');
-  //   await studentBox.clear();
-  //   print('Pending data cleared successfully');
-  // }
 
   static const String checklistBoxName = 'checklistBox';
 
@@ -140,7 +66,7 @@ class HiveService {
     final checklistBox = await Hive.openBox(checklistBoxName);
     final key = '$schoolName-$grade-$division-$evalNumber';
     await checklistBox.put(key, jsonEncode(students));
-    print(
+    log(
         'Checklist data saved successfully for $schoolName $grade $division evaluation $evalNumber');
   }
 
@@ -153,13 +79,72 @@ class HiveService {
 
     if (encodedData != null) {
       final List<dynamic> decodedData = jsonDecode(encodedData);
-      print(
+      log(
           'Checklist data fetched successfully for $schoolName $grade $division evaluation $evalNumber');
       return decodedData.cast<Map<String, dynamic>>();
     }
 
-    print(
+    log(
         'No checklist data found for $schoolName $grade $division evaluation $evalNumber');
     return [];
   }
 }
+
+
+
+
+
+// import 'package:hive/hive.dart';
+
+// class HiveService {
+//   // Method to save data to Hive
+//   Future<void> saveStudentData(List<Map<String, dynamic>> students) async {
+//     final studentBox = await Hive.openBox('studentBox');
+//     await studentBox.clear(); // Clear existing data before saving new data
+//     for (var student in students) {
+//       await studentBox.add(student);
+//     }
+//     log('Data saved successfully 1');
+//   }
+
+//   // Method to fetch data from Hive
+//   Future<List<Map<String, dynamic>>> getStudentData() async {
+//     final studentBox = await Hive.openBox('studentBox');
+//     final students = studentBox.values.toList();
+//     log('Data fetched successfully 2');
+//     return students.cast<Map<String, dynamic>>();
+//   }
+
+//   // Method to save pending student data in Hive for offline mode
+//   Future<void> savePendingStudentData(Map<String, dynamic> studentData) async {
+//     final studentBox = await Hive.openBox('studentPendingBox');
+//     await studentBox.add(studentData);
+//     log('Pending data saved successfully 4');
+//   }
+
+//   // Method to save grades and divisions data in Hive
+//   Future<void> saveGradesAndDivisions(List<String> grades,
+//       List<String> divisions, List<dynamic> rawData) async {
+//     final box = await Hive.openBox('gradesDivisionsBox');
+//     await box.put('grades', grades);
+//     await box.put('divisions', divisions);
+//     await box.put('data', rawData);
+//     log('Grades and divisions saved successfully 7');
+//   }
+
+//   // Method to get grades and divisions from Hive
+//   Future<Map<String, dynamic>> getGradesAndDivisionsFromHive() async {
+//     final box = await Hive.openBox('gradesDivisionsBox');
+//     final grades = box.get('grades', defaultValue: []);
+//     final divisions = box.get('divisions', defaultValue: []);
+//     final rawData = box.get('data', defaultValue: []);
+//     log('Grades and divisions fetched successfully 8');
+
+//     return {
+//       'grades': grades,
+//       'divisions': divisions,
+//       'data': rawData,
+//     };
+//   }
+
+// }

@@ -124,7 +124,7 @@ class _ManualStudentsListState extends State<ManualStudentsList> {
   }
 
   void navigate() async {
-    log('Exercise Name: ${exerciseName}');
+    log('Exercise Name: $exerciseName');
     Navigator.push(
       context,
       MaterialPageRoute(

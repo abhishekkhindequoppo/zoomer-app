@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -8,7 +7,6 @@ import 'package:get_it/get_it.dart';
 import 'package:hive/hive.dart';
 import 'package:msap/services/offline_sync_helper.dart';
 import 'package:msap/utils.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/student.dart';
 import 'dart:developer';
 import 'hive_service.dart'; // Import the HiveService class
@@ -57,46 +55,6 @@ class GolainApiService {
     }
   }
 
-  // Future<List<Map<String, dynamic>>> getStudentList(
-  //     String schoolName, String grade, String division) async {
-  //   final connectivityResult = await Connectivity().checkConnectivity();
-  //   final hiveService = HiveService();
-
-  //   if (connectivityResult == ConnectivityResult.none) {
-  //     // Offline mode: fetch data from Hive
-  //     log('Offline mode: Fetching data from Hive');
-  //     return await hiveService.getStudentData();
-  //   } else {
-  //     // Online mode: fetch data from API and store it in Hive
-  //     try {
-  //       final response = await _dio.get('/student_list/', queryParameters: {
-  //         'school_name': schoolName,
-  //         'grade': grade,
-  //         'division': division,
-  //       });
-
-  //       if (response.statusCode == 200) {
-  //         final data = response.data;
-  //         if (data['ok'] == 1) {
-  //           final studentList = List<Map<String, dynamic>>.from(data['data']);
-  //           // Store the fetched data in Hive
-  //           await hiveService.saveStudentData(studentList);
-  //           log('Online mode: Data fetched from API and saved to Hive');
-  //           return studentList;
-  //         } else {
-  //           throw Exception('API returned ok: 0');
-  //         }
-  //       } else {
-  //         throw Exception('Failed to load student list');
-  //       }
-  //     } on DioException catch (e) {
-  //       log('Error getting student list from API: ${e.message}');
-  //       // If API call fails, try to fetch data from Hive as a fallback
-  //       log('Falling back to Hive data');
-  //       return await hiveService.getStudentData();
-  //     }
-  //   }
-  // }
 
   Future<List<Map<String, dynamic>>> getStudentList(
       String schoolName, String grade, String division) async {
@@ -331,94 +289,6 @@ class GolainApiService {
     }
   }
 
-  // Future<List<Map<String, dynamic>>> getChecklistStudents(
-  //     String schoolName, String grade, String division, int evalNumber) async {
-  //   try {
-  //     // Try to get data from local storage first
-  //     final prefs = await SharedPreferences.getInstance();
-  //     final cacheKey =
-  //         'checklist_${schoolName}_${grade}_${division}_$evalNumber';
-  //     final cachedData = prefs.getString(cacheKey);
-
-  //     if (cachedData != null) {
-  //       log('Retrieved checklist students from cache');
-  //       final List<dynamic> students = jsonDecode(cachedData);
-  //       return students.cast<Map<String, dynamic>>().toList();
-  //     }
-
-  //     // If not in cache, try to fetch from API
-  //     log('Getting checklist students from API');
-  //     final response =
-  //         await _dio.get('get_checklist_students/', queryParameters: {
-  //       'school_name': schoolName,
-  //       'division': division,
-  //       'grade': grade,
-  //       'eval_number': evalNumber,
-  //     });
-
-  //     if (response.statusCode == 200) {
-  //       final data = response.data;
-  //       if (data['ok'] == 1) {
-  //         final List<dynamic> students = data['data'];
-
-  //         // Cache the data
-  //         await prefs.setString(cacheKey, jsonEncode(students));
-  //         log('Cached checklist students');
-
-  //         return students.cast<Map<String, dynamic>>().toList();
-  //       } else {
-  //         throw Exception('API returned ok: 0');
-  //       }
-  //     } else {
-  //       throw Exception('Failed to load checklist students');
-  //     }
-  //   } on DioException catch (e) {
-  //     log('Error getting checklist students: ${e.message}');
-  //     // If there's an error (likely due to being offline), try to get data from cache
-  //     final prefs = await SharedPreferences.getInstance();
-  //     final cacheKey =
-  //         'checklist_${schoolName}_${grade}_${division}_$evalNumber';
-  //     final cachedData = prefs.getString(cacheKey);
-
-  //     if (cachedData != null) {
-  //       log('Retrieved checklist students from cache after network error');
-  //       final List<dynamic> students = jsonDecode(cachedData);
-  //       return students.cast<Map<String, dynamic>>().toList();
-  //     }
-
-  //     // If no cached data, return an empty list
-  //     return [];
-  //   }
-  // }
-
-  // Future<List<Map<String, dynamic>>> getChecklistStudents(
-  //     String schoolName, String grade, String division, int evalNumber) async {
-  //   try {
-  //     log('Getting checklist students');
-  //     final response =
-  //         await _dio.get('get_checklist_students/', queryParameters: {
-  //       'school_name': schoolName,
-  //       'division': division,
-  //       'grade': grade,
-  //       'eval_number': evalNumber,
-  //     });
-
-  //     if (response.statusCode == 200) {
-  //       final data = response.data;
-  //       if (data['ok'] == 1) {
-  //         final List<dynamic> students = data['data'];
-  //         return students.cast<Map<String, dynamic>>().toList();
-  //       } else {
-  //         throw Exception('API returned ok: 0');
-  //       }
-  //     } else {
-  //       throw Exception('Failed to load checklist students');
-  //     }
-  //   } on DioException catch (e) {
-  //     log('Error getting checklist students: ${e.message}');
-  //     return [];
-  //   }
-  // }
 
   Future<void> syncEvaluationDataWithServer() async {
     try {
@@ -427,12 +297,12 @@ class GolainApiService {
 
       // Retrieve the evaluation data from Hive
       var evaluationData = box.get('evaluationRecord');
-      print("Retrieved evaluation data from Hive: $evaluationData");
+      log("Retrieved evaluation data from Hive: $evaluationData");
 
       // Check if there is data to sync
       if (evaluationData != null) {
         // Log the type of data retrieved
-        print("Type of evaluationData: ${evaluationData.runtimeType}");
+        log("Type of evaluationData: ${evaluationData.runtimeType}");
 
         // Check if the data is a Map
         if (evaluationData is Map<String, dynamic>) {

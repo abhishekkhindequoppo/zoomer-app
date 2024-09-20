@@ -49,11 +49,11 @@ class AuthenticationService {
   }
 
   Future login() async {
-    print('Attempting login');
+    log('Attempting login');
     try {
       final user = await userManager.loginAuthorizationCodeFlow();
       if (user == null) {
-        print("Login failed");
+        log("Login failed");
         return null;
       } else {
         userInfo = user.userInfo;
@@ -61,15 +61,15 @@ class AuthenticationService {
         // final prefs = await SharedPreferences.getInstance();
         // await prefs.setString('school_name', name!);
         if (name != null) {
-          print('User logged in: $name');
+          log('User logged in: $name');
         } else {
-          print('Name not found in user info');
+          log('Name not found in user info');
         }
 
         return user;
       }
     } catch (e) {
-      print('Login error: ${e.toString()}');
+      log('Login error: ${e.toString()}');
     }
   }
 

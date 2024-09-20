@@ -1,7 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:msap/dependency_injector.dart';
 import 'package:msap/firebase_options.dart';
@@ -31,5 +30,5 @@ void main() async {
     ),
   );
 
-  runApp(MyApp());
+  runApp(const MyApp());
 }

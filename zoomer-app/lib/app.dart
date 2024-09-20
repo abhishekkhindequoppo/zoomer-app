@@ -48,7 +48,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   void checkAuth() async {
-    print("Checking the checkAuth Log");
+    log("Checking the checkAuth Log");
     try {
       await authenticationService.init();
     } catch (e) {
@@ -89,7 +89,7 @@ class _MyAppState extends State<MyApp> {
               ),
             )
           : (isLoggedIn)
-              ? HomeScreen()
+              ? const HomeScreen()
               : LoginPage(),
     );
   }

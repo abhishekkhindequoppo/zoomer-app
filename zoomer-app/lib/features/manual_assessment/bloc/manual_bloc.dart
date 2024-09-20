@@ -119,62 +119,7 @@ class ManualBloc extends Bloc<ManualEvent, ManualState> {
       // emit(StudentsErrorState('Failed to fetch students: $e'));
     }
   }
-  // void _onFetchStudentsEvent(
-  //     FetchStudentsEvent event, Emitter<ManualState> emit) async {
-  //   try {
-  //     final connectivityResult = await Connectivity().checkConnectivity();
-  //     final hiveService = HiveService(); // Create an instance of HiveService
-
-  //     if (connectivityResult == ConnectivityResult.none) {
-  //       // No internet: fetch data from Hive
-  //       final studentsData = await hiveService.getStudentData();
-  //       // Extract the student names from the list of maps
-  //       final studentNames = studentsData
-  //           .map<String>((student) => student['student_name'] as String)
-  //           .toList();
-
-  //       log('Fetched student names from Hive: $studentNames');
-  //       emit(StudentsLoadedState(studentNames));
-  //     } else {
-  //       // Internet available: fetch data from the API
-  //       final studentsData = await golainApiService.getStudentList(
-  //           event.schoolName, event.grade, event.division);
-
-  //       // Extract the student names from the list of maps
-  //       final studentNames = studentsData
-  //           .map<String>((student) => student['student_name'] as String)
-  //           .toList();
-
-  //       log('Fetched student names from API: $studentNames');
-
-  //       // Save the fetched data in Hive for offline access
-  //       await hiveService.saveStudentData(studentsData);
-
-  //       emit(StudentsLoadedState(studentNames));
-  //     }
-  //   } catch (e) {
-  //     log('Failed to fetch students: $e');
-  //   }
-  // }
-
-  // void _onFetchStudentsEvent(
-  //     FetchStudentsEvent event, Emitter<ManualState> emit) async {
-  //   try {
-  //     final studentsData = await golainApiService.getStudentList(
-  //         event.schoolName, event.grade, event.division);
-
-  //     // Extracting the student names from the list of maps
-  //     final studentNames = studentsData
-  //         .map<String>((student) => student['student_name'] as String)
-  //         .toList();
-
-  //     log('Parsed Student Names: $studentNames');
-
-  //     emit(StudentsLoadedState(studentNames));
-  //   } catch (e) {
-  //     print('Failed to fetch students: $e');
-  //   }
-  // }
+  
 
   void _onPresentEvent(PresentEvent event, Emitter<ManualState> emit) async {
     emit(Present());

@@ -8,7 +8,6 @@ import 'package:hive/hive.dart';
 import 'package:msap/features/manual_assessment/bloc/manual_bloc.dart';
 import 'package:msap/features/manual_assessment/exercise_wise.dart';
 import 'package:msap/features/manual_assessment/questions_screen.dart';
-import 'package:msap/features/manual_assessment/students.dart';
 import 'package:msap/features/profile/profile.dart';
 import 'package:msap/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -159,7 +158,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
     var box = await Hive.openBox('evaluationData');
     await box.put('evaluationRecord',
         evaluationData); // Store the data using a key, such as 'evaluationRecord'
-    print(
+    log(
         "get from hive${box.get('evaluationRecord') as Map<String, dynamic>}"); // Retrieve the data using the key
     log("evalution data stored in Hive");
 
@@ -466,7 +465,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                         // Handle case when no attendance is selected
                         if (attendance == null || attendance.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
+                         const   SnackBar(
                                 content:
                                     Text('Please select attendance status')),
                           );
