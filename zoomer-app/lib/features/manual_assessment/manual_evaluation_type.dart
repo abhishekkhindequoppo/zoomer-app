@@ -72,12 +72,15 @@ class _ManualEvaluationTypeState extends State<ManualEvaluationType> {
 
   void processStudentData() {
     log('Processing Student Data');
+    Map<String, Map<String, bool>> studentExerciseStatus = {};
     for (var studentData in evaluatedStudentDatas) {
       String studentName = studentData['student_name'];
       studentSet.add(studentName);
-      studentExerciseCount[studentName] = 0;
-
       if (studentData['attendance'] == 'Present') {
+        if (!studentExerciseStatus.containsKey(studentName)) {
+          studentExerciseStatus[studentName] = {};
+        }
+
         Map<String, int> gradeExercises =
             Utils.gradeQuestionType[selectedGrade] ?? {};
 
@@ -87,18 +90,25 @@ class _ManualEvaluationTypeState extends State<ManualEvaluationType> {
             var value = studentData[apiField];
             log('Student name: $studentName, API Field: $apiField, Value: $value');
             if (value != 0 && value != '') {
-              studentExerciseCount[studentName] =
-                  (studentExerciseCount[studentName] ?? 0) + 1;
+              studentExerciseStatus[studentName]![apiField] = true;
             }
           }
         }
-
-        if (studentExerciseCount[studentName] == 6) {
-          checklistStudentNames.add(studentName);
-        }
       }
     }
+// Count the number of completed exercises for each student
+    studentExerciseCount.clear();
+    checklistStudentNames.clear();
 
+    studentExerciseStatus.forEach((studentName, exercises) {
+      int completedExercises = exercises.values.where((v) => v).length;
+      studentExerciseCount[studentName] = completedExercises;
+      log('$studentName: $completedExercises');
+
+      if (completedExercises == 6) {
+        checklistStudentNames.add(studentName);
+      }
+    });
     log('Checklist Student Names: $checklistStudentNames');
   }
 

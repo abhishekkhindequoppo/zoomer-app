@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -13,6 +12,7 @@ import 'package:msap/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/golain_api_services.dart';
 import 'package:get_it/get_it.dart';
+import 'dart:developer';
 
 class QuestionsScreen extends StatefulWidget {
   const QuestionsScreen({super.key});
@@ -22,59 +22,19 @@ class QuestionsScreen extends StatefulWidget {
 }
 
 class _QuestionsScreenState extends State<QuestionsScreen> {
-  Map<String, int> questions = {
-    '1. Is the student able to step over the balance beam with his prefered (dominant) leg?':
-        0,
-    '2. Is the student able to step over a row of mighty mugs with his no-dominant leg?':
-        0,
-    '3. Is the student able to step down from a three-storey tower of biggie pegs on his preferred (dominant) leg?':
-        0,
-    '4. Is the student able to step down from a two-storey tower of biggie pegs on his non-dominant leg?':
-        0,
-    '5. How many Jumps is the student able to do? (To jump using both legs and land on both feet)':
-        0,
-    '6. How many times is the student able to do? (To jump using both legs and land on both feet)':
-        0,
-  };
+  late Map<String, int> questions = {};
   int index = 0;
   late ManualBloc _manualBloc;
   final TextEditingController _controller = TextEditingController();
   String grade = '';
   String studentName = '';
-  String division = ''; // Add this line
+  String division = '';
   final map = Utils.gradeQuestionType;
   String schoolName = '';
+  List<Map<String, dynamic>> evaluatedStudentDatas = [];
+  Map<String, dynamic> answers = {};
 
   static final getIt = GetIt.instance;
-
-  List<List<dynamic>> answers = [
-    [
-      'Student Name',
-      'Roll No',
-      'Age',
-      'Grade - A',
-      'Is the student able to step over the balance beam with his prefered (dominant) leg?',
-      'Is the student able to step over a row of mighty mugs with his no-dominant leg?',
-      'Is the student able to step down from a three-storey tower of biggie pegs on his preferred (dominant) leg?',
-      'Is the student able to step down from a two-storey tower of biggie pegs on his non-dominant leg?',
-      'How many Jumps is the student able to do? (To jump using both legs and land on both feet)',
-      'How many times is the student able to do? (To jump using both legs and land on both feet)',
-    ]
-  ];
-  List<dynamic> l = [
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-  ];
-
-  void saveCSV() async {}
 
   @override
   void initState() {
@@ -91,6 +51,69 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     super.dispose();
   }
 
+  Future<void> checkAndMoveToNextQuestion() async {
+    bool shouldSkip;
+    do {
+      shouldSkip =
+          await checkForRepeatQuestion(questions.keys.elementAt(index));
+      if (shouldSkip) {
+        index++;
+        if (index >= questions.length) {
+          // All questions have been checked, end the evaluation
+          await submitEvaluation();
+          _manualBloc.add(EndQuestionsEvent());
+          return;
+        }
+      }
+    } while (shouldSkip);
+
+    // Update UI for the current question
+    setState(() {
+      String currentQuestion = questions.keys.elementAt(index);
+      _controller.text = answers[currentQuestion] ?? '';
+    });
+  }
+
+  Future<void> moveToNextQuestion() async {
+    index++;
+    if (index >= questions.length) {
+      // All questions have been checked, end the evaluation
+      await submitEvaluation();
+      _manualBloc.add(EndQuestionsEvent());
+      return;
+    }
+
+    await checkAndMoveToNextQuestion();
+  }
+
+  Future<bool> checkForRepeatQuestion(String question) async {
+    final prefs = await SharedPreferences.getInstance();
+    final schoolName = prefs.getString('school_name') ?? '';
+    final grade = prefs.getString('selectedGrade') ?? '';
+    final division = prefs.getString('selectedDivision') ?? '';
+    final studentName = prefs.getString('student') ?? '';
+
+    final golainApiService = getIt<GolainApiService>();
+    evaluatedStudentDatas = await golainApiService.getChecklistStudents(
+        schoolName, grade, division, 1);
+
+    if (evaluatedStudentDatas.isNotEmpty) {
+      for (var studentData in evaluatedStudentDatas) {
+        if (studentData['student_name'] == studentName) {
+          if (studentData['attendance'] == 'Present') {
+            String apiField = questionToApiFieldMap[question] ?? '';
+            if (studentData[apiField] != 0 && studentData[apiField] != '') {
+              log('Skipping question $question for student $studentName');
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
   Future<void> submitEvaluation() async {
     final prefs = await SharedPreferences.getInstance();
     final schoolName = prefs.getString('school_name') ?? '';
@@ -99,8 +122,6 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     final studentName = prefs.getString('student') ?? '';
     final attendance = prefs.getString('attendance') ?? '';
     final timestamp = DateTime.now().toIso8601String() + '+05:30';
-
-    final imageUrl = prefs.getString('image_id') ?? '';
 
     final Map<String, dynamic> evaluationData = {
       "school_name": schoolName,
@@ -113,7 +134,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
       "time_of_eval": timestamp,
       "year_of_eval": timestamp,
       "instructor_name": "",
-      "image_id": imageUrl,
+      "image_id": "",
       "skipping": 0,
       "hit_balloon_up": 0,
       "dribbling_ball_8": 0,
@@ -141,9 +162,9 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     };
 
     // Map answers to API fields
-    for (int i = 0; i < questions.length; i++) {
-      final question = questions.keys.elementAt(i);
-      final answer = l[i + 4];
+    for (var entry in answers.entries) {
+      final question = entry.key;
+      final answer = entry.value;
       final apiField = questionToApiFieldMap[question];
       if (apiField != null) {
         if (questions[question] == 0) {
@@ -162,7 +183,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     if (result) {
       Utils.showSuccess('Evaluation submitted successfully');
     } else {
-      // Utils.showError('Failed to submit evaluation');
+      Utils.showError('Failed to submit evaluation');
     }
   }
 
@@ -177,6 +198,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     final timestamp = DateTime.now().toIso8601String() + '+05:30';
     final imageUrl = prefs.getString('image_id') ?? '';
 
+    // Create the evaluation data map
     final Map<String, dynamic> evaluationData = {
       "school_name": schoolName,
       "grade": grade,
@@ -213,15 +235,14 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
       "hop_forward_nondominant_leg": 0,
       "forward_backward_spread_legs": 0,
       "alternate_forward_backward_legs": 0
-      // Add all other fields
     };
 
-// Map answers to Hive storage fields
-    for (int i = 0; i < questions.length; i++) {
-      final question = questions.keys.elementAt(i);
-      final answer = l[i + 4];
-      final hiveField = questionToApiFieldMap[
-          question]; // Use a map to map questions to Hive fields
+    // Map the answers to the respective Hive fields
+    for (var entry in answers.entries) {
+      final question = entry.key;
+      final answer = entry.value;
+      final hiveField = questionToApiFieldMap[question];
+
       if (hiveField != null) {
         if (questions[question] == 0) {
           // Yes/No question
@@ -233,16 +254,14 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
       }
     }
 
-
-// Store the data in Hive
+    // Store the data in Hive
     var box = await Hive.openBox('evaluationData');
-    await box.put('evaluationRecord',
-        evaluationData); // Store the data using a key, such as 'evaluationRecord'
-    print("get from hive${box.get('evaluationRecord')
-        as Map<String, dynamic>}"); // Retrieve the data using the key
-    log("evalution data stored in Hive");
+    await box.put('evaluationRecord', evaluationData);
 
-    Utils.showSuccess('Evaluation submitted successfully to hive');
+    print("get from hive: ${box.get('evaluationRecord')}");
+    log("Evaluation data stored in Hive");
+
+    Utils.showSuccess('Evaluation submitted successfully to Hive');
   }
 
   @override
@@ -260,41 +279,31 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
             bloc: _manualBloc,
             listener: (context, state) {
               if (state is NextQuestion) {
-                setState(() {
-                  index++;
-                  _controller.text = l[index + 4];
-                });
+                moveToNextQuestion();
               } else if (state is PreviousQuestion) {
                 setState(() {
-                  index--;
-                  _controller.text = l[index + 4];
+                  if (index > 0) {
+                    index--;
+                    _controller.text =
+                        answers[questions.keys.elementAt(index)] ?? '';
+                  }
+                });
+              } else if (state is AllQuestionsCompletedState) {
+                submitEvaluation().then((_) {
+                  _manualBloc.add(EndQuestionsEvent());
                 });
               } else if (state is Auth) {
                 setState(() {
                   grade = state.grade;
                   division = state.division;
                   studentName = state.studentName!;
-                  l = [studentName, 12345, 10, grade, '', '', '', '', '', ''];
-                  answers[0] = [
-                    'Student Name',
-                    'Roll No',
-                    'Age',
-                    'Grade',
-                    map[grade]!.keys.elementAt(0),
-                    map[grade]!.keys.elementAt(1),
-                    map[grade]!.keys.elementAt(2),
-                    map[grade]!.keys.elementAt(3),
-                    map[grade]!.keys.elementAt(4),
-                    map[grade]!.keys.elementAt(5),
-                  ];
-                  questions = Map.fromEntries(map[grade]!
-                      .entries
-                      .map((entry) => MapEntry(entry.key, entry.value)));
+                  questions = Map.from(Utils.gradeQuestionType[grade] ?? {});
+                  answers = Map.fromEntries(
+                      questions.keys.map((q) => MapEntry(q, '')));
                 });
+                // Check the first question after authentication
+                checkAndMoveToNextQuestion();
               } else if (state is EndQuestions) {
-                setState(() {
-                  answers.add(l);
-                });
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(
@@ -335,315 +344,344 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
               }
             },
             builder: (context, state) {
-              return state is EndQuestions
-                  ? const Center(child: CircularProgressIndicator.adaptive())
-                  : SingleChildScrollView(
+              if (state is EndQuestions) {
+                return const Center(
+                    child: CircularProgressIndicator.adaptive());
+              }
+
+              if (questions.isEmpty) {
+                return const Center(
+                    child: CircularProgressIndicator.adaptive());
+              }
+
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            InkWell(
+                              onTap: () {
+                                Navigator.of(context).pop();
+                              },
+                              child: Icon(
+                                Icons.arrow_back_ios_new_outlined,
+                                size: utils.titleSize,
+                              ),
+                            ),
+                            SizedBox(width: utils.screenWidth * 0.02),
+                            Text(
+                              grade,
+                              style: GoogleFonts.roboto(
+                                color: Colors.black,
+                                fontWeight: FontWeight.w600,
+                                fontSize: utils.titleSize,
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ProfileScreen(),
+                              ),
+                            );
+                          },
+                          icon: Icon(
+                            Icons.settings,
+                            size: utils.iconSize,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: utils.screenHeight * 0.03),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: utils.paddingHorizontal,
+                        vertical: utils.paddingVertical,
+                      ),
+                      decoration: utils.detailsContainerDecoration(),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Text(
+                            'Student Name',
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFFA09CAB),
+                              fontWeight: FontWeight.w600,
+                              fontSize: utils.subtitleSize * 0.8,
+                            ),
+                          ),
+                          SizedBox(height: utils.screenHeight * 0.01),
+                          Text(
+                            studentName,
+                            style: GoogleFonts.inter(
+                              fontSize: utils.subtitleSize * 0.7,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          SizedBox(height: utils.screenHeight * 0.03),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  InkWell(
-                                    onTap: () {
-                                      Navigator.of(context).pop();
-                                    },
-                                    child: Icon(
-                                      Icons.arrow_back_ios_new_outlined,
-                                      size: utils.titleSize,
+                                  Text(
+                                    'Grade',
+                                    style: GoogleFonts.inter(
+                                      color: const Color(0xFFA09CAB),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: utils.subtitleSize * 0.8,
                                     ),
                                   ),
-                                  SizedBox(width: utils.screenWidth * 0.02),
+                                  SizedBox(height: utils.screenHeight * 0.01),
                                   Text(
                                     grade,
-                                    style: GoogleFonts.roboto(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: utils.titleSize,
+                                    style: GoogleFonts.inter(
+                                      fontSize: utils.subtitleSize * 0.7,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w400,
                                     ),
                                   ),
                                 ],
                               ),
-                              IconButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const ProfileScreen(),
+                              SizedBox(width: utils.screenWidth * 0.2),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Division',
+                                    style: GoogleFonts.inter(
+                                      color: const Color(0xFFA09CAB),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: utils.subtitleSize * 0.8,
                                     ),
-                                  );
-                                },
-                                icon: Icon(
-                                  Icons.settings,
-                                  size: utils.iconSize,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: utils.screenHeight * 0.03),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: utils.paddingHorizontal,
-                              vertical: utils.paddingVertical,
-                            ),
-                            decoration: utils.detailsContainerDecoration(),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Student Name',
-                                  style: GoogleFonts.inter(
-                                    color: const Color(0xFFA09CAB),
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: utils.subtitleSize * 0.8,
                                   ),
-                                ),
-                                SizedBox(height: utils.screenHeight * 0.01),
-                                Text(
-                                  studentName,
-                                  style: GoogleFonts.inter(
-                                    fontSize: utils.subtitleSize * 0.7,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                ),
-                                SizedBox(height: utils.screenHeight * 0.03),
-                                Row(
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Grade',
-                                          style: GoogleFonts.inter(
-                                            color: const Color(0xFFA09CAB),
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: utils.subtitleSize * 0.8,
-                                          ),
-                                        ),
-                                        SizedBox(
-                                            height: utils.screenHeight * 0.01),
-                                        Text(
-                                          grade,
-                                          style: GoogleFonts.inter(
-                                            fontSize: utils.subtitleSize * 0.7,
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(width: utils.screenWidth * 0.2),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Division',
-                                          style: GoogleFonts.inter(
-                                            color: const Color(0xFFA09CAB),
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: utils.subtitleSize * 0.8,
-                                          ),
-                                        ),
-                                        SizedBox(
-                                            height: utils.screenHeight * 0.01),
-                                        Text(
-                                          division,
-                                          style: GoogleFonts.inter(
-                                            fontSize: utils.subtitleSize * 0.7,
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: utils.screenHeight * 0.03),
-                          Text(
-                            questions.keys.elementAt(index),
-                            style: GoogleFonts.roboto(
-                              color: Colors.black,
-                              fontWeight: FontWeight.w500,
-                              fontSize: utils.subtitleSize,
-                            ),
-                          ),
-                          SizedBox(height: utils.screenHeight * 0.03),
-                          questions[questions.keys.elementAt(index)] == 0
-                              ? Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceAround,
-                                  children: [
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        onPressed: () {
-                                          setState(() {
-                                            l[index + 4] = 'No';
-                                          });
-                                        },
-                                        style: l[index + 4] == 'No'
-                                            ? utils.elevatedButtonStyle().copyWith(
-                                                backgroundColor:
-                                                    WidgetStatePropertyAll(utils
-                                                        .selectedContainer))
-                                            : utils.elevatedButtonStyle(),
-                                        child: Text(
-                                          'No',
-                                          style: GoogleFonts.inter(
-                                            color: const Color(0xFF1E3D75),
-                                            fontSize: utils.subtitleSize,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(width: utils.screenWidth * 0.02),
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        onPressed: () {
-                                          setState(() {
-                                            l[index + 4] = 'Yes';
-                                          });
-                                        },
-                                        style: l[index + 4] == 'Yes'
-                                            ? utils.elevatedButtonStyle().copyWith(
-                                                backgroundColor:
-                                                    WidgetStatePropertyAll(utils
-                                                        .selectedContainer))
-                                            : utils.elevatedButtonStyle(),
-                                        child: Text(
-                                          'Yes',
-                                          style: GoogleFonts.inter(
-                                            color: const Color(0xFF1E3D75),
-                                            fontSize: utils.subtitleSize,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : TextField(
-                                  controller: _controller,
-                                  keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(
-                                    hintText: 'Enter number',
-                                    hintStyle: GoogleFonts.roboto(
-                                      color: const Color.fromRGBO(0, 0, 0, 0.5),
-                                      fontSize: utils.subtitleSize,
+                                  SizedBox(height: utils.screenHeight * 0.01),
+                                  Text(
+                                    division,
+                                    style: GoogleFonts.inter(
+                                      fontSize: utils.subtitleSize * 0.7,
+                                      color: Colors.white,
                                       fontWeight: FontWeight.w400,
                                     ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                          utils.borderRadius),
-                                      borderSide: const BorderSide(
-                                        color: Color.fromRGBO(0, 0, 0, 0.1),
-                                      ),
-                                    ),
                                   ),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      l[index + 4] = value;
-                                    });
-                                  },
-                                ),
-                          SizedBox(height: utils.screenHeight * 0.03),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              if (index != 0)
-                                ElevatedButton(
-                                  style: utils.elevatedButtonStyle().copyWith(
-                                      backgroundColor:
-                                          const WidgetStatePropertyAll(
-                                              Color(0xFF1E3D75))),
-                                  onPressed: () {
-                                    _manualBloc.add(PreviousQuestionEvent());
-                                  },
-                                  child: Text(
-                                    'Back',
-                                    style: GoogleFonts.roboto(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: utils.subtitleSize,
-                                    ),
-                                  ),
-                                ),
-                              if (index == 0) const Spacer(),
-                              ElevatedButton(
-                                style: utils.elevatedButtonStyle().copyWith(
-                                      backgroundColor:
-                                          MaterialStateProperty.all(
-                                        const Color(0xFF1E3D75),
-                                      ),
-                                    ),
-                                onPressed: () async {
-                                  // Check internet connectivity
-                                  var connectivityResult =
-                                      await Connectivity().checkConnectivity();
-
-                                  // Assuming you want to handle actual internet connection, not just network status
-                                  bool isConnected = false;
-                                  if (connectivityResult !=
-                                      ConnectivityResult.none) {
-                                    try {
-                                      // Perform a small network request to check actual internet access
-                                      final result =
-                                          await InternetAddress.lookup(
-                                              'example.com');
-                                      if (result.isNotEmpty &&
-                                          result[0].rawAddress.isNotEmpty) {
-                                        isConnected = true;
-                                      }
-                                    } catch (_) {
-                                      isConnected = false;
-                                    }
-                                  }
-
-                                  if (isConnected) {
-                                    // Internet is available, submit to API
-                                    if (index == 5) {
-                                      await submitEvaluation().then((_) {
-                                        _manualBloc.add(EndQuestionsEvent());
-                                      });
-                                      log("post API request if connected");
-                                    } else {
-                                      _manualBloc.add(NextQuestionEvent());
-                                    }
-                                  } else {
-                                    // Internet is not available, store data in Hive
-                                    if (index == 5) {
-                                      await storeEvaluationInHive();
-                                      _manualBloc.add(EndQuestionsEvent());
-                                      log("store data in hive if not connected");
-                                    } else {
-                                      _manualBloc.add(NextQuestionEvent());
-                                    }
-                                  }
-                                },
-                                child: Text(
-                                  index != 5 ? 'Next' : 'End',
-                                  style: GoogleFonts.roboto(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: utils.subtitleSize,
-                                  ),
-                                ),
-                              )
+                                ],
+                              ),
                             ],
                           ),
                         ],
                       ),
-                    );
+                    ),
+                    SizedBox(height: utils.screenHeight * 0.03),
+                    Text(
+                      questions.keys.elementAt(index),
+                      style: GoogleFonts.roboto(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w500,
+                        fontSize: utils.subtitleSize,
+                      ),
+                    ),
+                    SizedBox(height: utils.screenHeight * 0.03),
+                    questions[questions.keys.elementAt(index)] == 0
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      answers[questions.keys.elementAt(index)] =
+                                          'No';
+                                    });
+                                  },
+                                  style: answers[questions.keys
+                                              .elementAt(index)] ==
+                                          'No'
+                                      ? utils.elevatedButtonStyle().copyWith(
+                                          backgroundColor:
+                                              WidgetStatePropertyAll(
+                                                  utils.selectedContainer))
+                                      : utils.elevatedButtonStyle(),
+                                  child: Text(
+                                    'No',
+                                    style: GoogleFonts.inter(
+                                      color: const Color(0xFF1E3D75),
+                                      fontSize: utils.subtitleSize,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: utils.screenWidth * 0.02),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      answers[questions.keys.elementAt(index)] =
+                                          'Yes';
+                                    });
+                                  },
+                                  style: answers[questions.keys
+                                              .elementAt(index)] ==
+                                          'Yes'
+                                      ? utils.elevatedButtonStyle().copyWith(
+                                          backgroundColor:
+                                              WidgetStatePropertyAll(
+                                                  utils.selectedContainer))
+                                      : utils.elevatedButtonStyle(),
+                                  child: Text(
+                                    'Yes',
+                                    style: GoogleFonts.inter(
+                                      color: const Color(0xFF1E3D75),
+                                      fontSize: utils.subtitleSize,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : TextField(
+                            controller: _controller,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              hintText: 'Enter number',
+                              hintStyle: GoogleFonts.roboto(
+                                color: const Color.fromRGBO(0, 0, 0, 0.5),
+                                fontSize: utils.subtitleSize,
+                                fontWeight: FontWeight.w400,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.circular(utils.borderRadius),
+                                borderSide: const BorderSide(
+                                  color: Color.fromRGBO(0, 0, 0, 0.1),
+                                ),
+                              ),
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                answers[questions.keys.elementAt(index)] =
+                                    value;
+                              });
+                            },
+                          ),
+                    SizedBox(height: utils.screenHeight * 0.03),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        if (index != 0)
+                          ElevatedButton(
+                            style: utils.elevatedButtonStyle().copyWith(
+                                backgroundColor: const WidgetStatePropertyAll(
+                                    Color(0xFF1E3D75))),
+                            onPressed: () {
+                              _manualBloc.add(PreviousQuestionEvent());
+                            },
+                            child: Text(
+                              'Back',
+                              style: GoogleFonts.roboto(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                                fontSize: utils.subtitleSize,
+                              ),
+                            ),
+                          ),
+                        if (index == 0) const Spacer(),
+                        ElevatedButton(
+                          style: utils.elevatedButtonStyle().copyWith(
+                                backgroundColor: WidgetStateProperty.all(
+                                  const Color(0xFF1E3D75),
+                                ),
+                              ),
+                          onPressed: () async {
+                            // Check internet connectivity
+                            var connectivityResult =
+                                await Connectivity().checkConnectivity();
+
+                            // Assuming you want to handle actual internet connection, not just network status
+                            bool isConnected = false;
+                            if (connectivityResult != ConnectivityResult.none) {
+                              try {
+                                // Perform a small network request to check actual internet access
+                                final result =
+                                    await InternetAddress.lookup('example.com');
+                                if (result.isNotEmpty &&
+                                    result[0].rawAddress.isNotEmpty) {
+                                  isConnected = true;
+                                }
+                              } catch (_) {
+                                isConnected = false;
+                              }
+                            }
+
+                            if (isConnected) {
+                              // Internet is available, submit to API
+                              if (index == 5) {
+                                await submitEvaluation().then((_) {
+                                  _manualBloc.add(EndQuestionsEvent());
+                                });
+                                log("post API request if connected");
+                              } else {
+                                _manualBloc.add(
+                                    NextQuestionEvent(currentIndex: index));
+                              }
+                            } else {
+                              // Internet is not available, store data in Hive
+                              if (index == 5) {
+                                await storeEvaluationInHive();
+                                _manualBloc.add(EndQuestionsEvent());
+                                log("store data in hive if not connected");
+                              } else {
+                                _manualBloc.add(
+                                    NextQuestionEvent(currentIndex: index));
+                              }
+                            }
+                          },
+                          child: Text(
+                            index != 5 ? 'Next' : 'End',
+                            style: GoogleFonts.roboto(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                              fontSize: utils.subtitleSize,
+                            ),
+                          ),
+                        )
+
+                        // ElevatedButton(
+                        //   style: utils.elevatedButtonStyle().copyWith(
+                        //       backgroundColor: const WidgetStatePropertyAll(
+                        //           Color(0xFF1E3D75))),
+                        //   onPressed: () {
+                        //     if (index < questions.length - 1) {
+                        //       _manualBloc
+                        //           .add(NextQuestionEvent(currentIndex: index));
+                        //     } else {
+                        //       _manualBloc.add(AllQuestionsCompletedEvent());
+                        //     }
+                        //   },
+                        //   child: Text(
+                        //     index != questions.length - 1 ? 'Next' : 'End',
+                        //     style: GoogleFonts.roboto(
+                        //       color: Colors.white,
+                        //       fontWeight: FontWeight.w500,
+                        //       fontSize: utils.subtitleSize,
+                        //     ),
+                        //   ),
+                        // ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
             },
           ),
         ),

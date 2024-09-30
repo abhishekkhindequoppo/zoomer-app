@@ -7,7 +7,11 @@ class PresentEvent extends ManualEvent {}
 
 class AbsentEvent extends ManualEvent {}
 
-class NextQuestionEvent extends ManualEvent {}
+class NextQuestionEvent extends ManualEvent {
+  final int currentIndex;
+
+  NextQuestionEvent({required this.currentIndex});
+}
 
 class PreviousQuestionEvent extends ManualEvent {}
 
@@ -33,7 +37,8 @@ class ExerciseWiseEvent extends ManualEvent {}
 
 class StudentWiseEvent extends ManualEvent {}
 
-
 class ShowPopupEvent extends ManualEvent {}
 
 class PickImageEvent extends ManualEvent {}
+
+class AllQuestionsCompletedEvent extends ManualEvent {}

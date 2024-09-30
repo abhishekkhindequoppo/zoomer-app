@@ -21,6 +21,7 @@ class FetchDivisionsEvent extends HomeEvent {
 
   FetchDivisionsEvent({required this.grade, required this.school});
 }
+
 // New event to fetch grades and divisions
 class FetchGradesAndDivisionsEvent extends HomeEvent {
   final String schoolName;

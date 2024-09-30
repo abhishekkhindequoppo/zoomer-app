@@ -53,3 +53,6 @@ class ImagePickedState extends ManualState {
 }
 
 class ImageUploadFailedState extends ManualState {}
+
+class AllQuestionsCompletedState extends ManualState {}
+

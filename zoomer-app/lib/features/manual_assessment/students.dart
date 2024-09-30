@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:msap/features/manual_assessment/add_student.dart';
 import 'package:msap/features/manual_assessment/bloc/manual_bloc.dart';
+import 'package:msap/features/manual_assessment/exercise_wise.dart';
 import 'package:msap/features/manual_assessment/manual_evaluation_type.dart';
 import 'package:msap/features/manual_assessment/student_details.dart';
 import 'package:msap/utils.dart';
@@ -64,13 +65,20 @@ class _ManualStudentsListState extends State<ManualStudentsList> {
   }
 
   void processStudentData() {
+    log('Processing Student Data');
+    Map<String, Map<String, bool>> studentExerciseStatus = {};
+
+    // Case 1: When exerciseName is empty
     if (exerciseName.isEmpty) {
       for (var studentData in evaluatedStudentDatas) {
         String studentName = studentData['student_name'];
         studentSet.add(studentName);
-        studentExerciseCount[studentName] = 0;
 
         if (studentData['attendance'] == 'Present') {
+          if (!studentExerciseStatus.containsKey(studentName)) {
+            studentExerciseStatus[studentName] = {};
+          }
+
           Map<String, int> gradeExercises =
               Utils.gradeQuestionType[selectedGrade] ?? {};
 
@@ -80,40 +88,61 @@ class _ManualStudentsListState extends State<ManualStudentsList> {
               var value = studentData[apiField];
               log('Student name: $studentName, API Field: $apiField, Value: $value');
               if (value != 0 && value != '') {
-                studentExerciseCount[studentName] =
-                    (studentExerciseCount[studentName] ?? 0) + 1;
+                studentExerciseStatus[studentName]![apiField] = true;
               }
             }
           }
-
-          if (studentExerciseCount[studentName] == 6) {
-            checklistStudentNames.add(studentName);
-          }
         }
       }
-    } else {
+
+      // Count the number of completed exercises for each student
+      studentExerciseCount.clear();
+      checklistStudentNames.clear();
+
+      studentExerciseStatus.forEach((studentName, exercises) {
+        int completedExercises = exercises.values.where((v) => v).length;
+        studentExerciseCount[studentName] = completedExercises;
+        log('$studentName: $completedExercises');
+
+        if (completedExercises == 6) {
+          checklistStudentNames.add(studentName);
+        }
+      });
+    }
+    // Case 2: When exerciseName is not empty
+    else {
       for (var studentData in evaluatedStudentDatas) {
         String studentName = studentData['student_name'];
         studentSet.add(studentName);
-        studentExerciseCount[studentName] = 0;
 
         if (studentData['attendance'] == 'Present') {
+          if (!studentExerciseStatus.containsKey(studentName)) {
+            studentExerciseStatus[studentName] = {};
+          }
+
           String apiField = questionToApiFieldMap[exerciseName] ?? '';
           if (apiField.isNotEmpty) {
             var value = studentData[apiField];
             log('Student name: $studentName, API Field: $apiField, Value: $value');
             if (value != 0 && value != '') {
-              studentExerciseCount[studentName] =
-                  (studentExerciseCount[studentName] ?? 0) + 1;
+              studentExerciseStatus[studentName]![apiField] = true;
             }
-          }
-
-          if (studentExerciseCount[studentName]! >= 1) {
-            checklistStudentNames.add(studentName);
           }
         }
       }
+
+      // Check if any entry for the student has a non-null value for the specific exercise
+      studentExerciseCount.clear();
+      checklistStudentNames.clear();
+
+      studentExerciseStatus.forEach((studentName, exercises) {
+        if (exercises[questionToApiFieldMap[exerciseName]] == true) {
+          checklistStudentNames.add(studentName);
+          log('$studentName: Marked for checklist');
+        }
+      });
     }
+
     log('Checklist Student Names: $checklistStudentNames');
   }
 
@@ -124,7 +153,7 @@ class _ManualStudentsListState extends State<ManualStudentsList> {
   }
 
   void navigate() async {
-    log('Exercise Name: $exerciseName');
+    log('Exercise Name: ${exerciseName}');
     Navigator.push(
       context,
       MaterialPageRoute(

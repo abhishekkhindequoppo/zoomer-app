@@ -50,6 +50,7 @@ class ManualBloc extends Bloc<ManualEvent, ManualState> {
     on<AddStudentEvent>(_onAddStudentEvent);
     on<StudentWiseEvent>(_onStudentWiseEvent);
     on<ExerciseWiseEvent>(_onExerciseWiseEvent);
+    on<AllQuestionsCompletedEvent>(_onAllQuestionsCompletedEvent);
 
     on<ShowPopupEvent>((event, emit) async {
       // Wait for 10 seconds and then show popup
@@ -119,7 +120,6 @@ class ManualBloc extends Bloc<ManualEvent, ManualState> {
       // emit(StudentsErrorState('Failed to fetch students: $e'));
     }
   }
-  
 
   void _onPresentEvent(PresentEvent event, Emitter<ManualState> emit) async {
     emit(Present());
@@ -129,9 +129,30 @@ class ManualBloc extends Bloc<ManualEvent, ManualState> {
     emit(Absent());
   }
 
+  // void _onNextQuestionEvent(
+  //     NextQuestionEvent event, Emitter<ManualState> emit) async {
+  //   emit(NextQuestion());
+  // }
+  // void _onNextQuestionEvent(
+  //     NextQuestionEvent event, Emitter<ManualState> emit) async {
+  //   final int totalQuestions = 6;
+
+  //   if (event.currentIndex < totalQuestions - 1) {
+  //     emit(NextQuestion());
+  //   } else {
+  //     emit(AllQuestionsCompletedState());
+  //   }
+  // }
+
   void _onNextQuestionEvent(
       NextQuestionEvent event, Emitter<ManualState> emit) async {
-    emit(NextQuestion());
+    final int totalQuestions = 6;
+
+    if (event.currentIndex < totalQuestions - 1) {
+      emit(NextQuestion());
+    } else {
+      emit(AllQuestionsCompletedState());
+    }
   }
 
   void _onPreviousQuestionEvent(
@@ -208,5 +229,10 @@ class ManualBloc extends Bloc<ManualEvent, ManualState> {
       log("failed to upload image firebase");
       throw Exception('Failed to upload image');
     }
+  }
+
+  void _onAllQuestionsCompletedEvent(
+      AllQuestionsCompletedEvent event, Emitter<ManualState> emit) async {
+    emit(AllQuestionsCompletedState());
   }
 }

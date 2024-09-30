@@ -1,6 +1,10 @@
+import 'dart:io';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hive/hive.dart';
 import 'package:msap/features/manual_assessment/bloc/manual_bloc.dart';
 import 'package:msap/features/manual_assessment/students.dart';
 import 'package:msap/features/profile/profile.dart';
@@ -27,73 +31,147 @@ class _ManualExerciseWiseState extends State<ManualExerciseWise> {
   final TextEditingController _controller = TextEditingController();
 
   Future<void> submitEvaluation() async {
-  final prefs = await SharedPreferences.getInstance();
-  final schoolName = prefs.getString('school_name') ?? '';
-  final grade = prefs.getString('selectedGrade') ?? '';
-  final division = prefs.getString('selectedDivision') ?? '';
-  final attendance = prefs.getString('attendance') ?? '';
-  final timestamp = DateTime.now().toIso8601String() + '+05:30';
+    final prefs = await SharedPreferences.getInstance();
+    final schoolName = prefs.getString('school_name') ?? '';
+    final grade = prefs.getString('selectedGrade') ?? '';
+    final division = prefs.getString('selectedDivision') ?? '';
+    final attendance = prefs.getString('attendance') ?? '';
+    final timestamp = DateTime.now().toIso8601String() + '+05:30';
 
-  final Map<String, dynamic> evaluationData = {
-    "school_name": schoolName,
-    "grade": grade,
-    "division": division,
-    "student_name": studentName,
-    "roll_no": 0,
-    "attendance": attendance,
-    "evaluation_number": 1,
-    "time_of_eval": timestamp,
-    "year_of_eval": timestamp,
-    "instructor_name": "",
-    "image_id": "",
-    "skipping": 0,
-    "hit_balloon_up": 0,
-    "dribbling_ball_8": 0,
-    "dribbling_ball_O": 0,
-    "jump_symmetrically": 0,
-    "hop_9m_dominant_leg": 0,
-    "jump_asymmetrically": 0,
-    "ball_bounce_and_catch": 0,
-    "criss_cross_with_clap": 0,
-    "stand_on_dominant_leg": 0,
-    "hop_9m_nondominant_leg": 0,
-    "step_down_dominant_leg": "",
-    "step_over_dominant_leg": "",
-    "criss_cross_leg_forward": 0,
-    "jumping_jacks_with_clap": 0,
-    "criss_cross_without_clap": 0,
-    "hop_forward_dominant_leg": 0,
-    "stand_on_nondominant_leg": 0,
-    "step_down_nondominant_leg": "",
-    "step_over_nondominant_leg": "",
-    "jumping_jacks_without_clap": 0,
-    "hop_forward_nondominant_leg": 0,
-    "forward_backward_spread_legs": 0,
-    "alternate_forward_backward_legs": 0
-  };
+    final Map<String, dynamic> evaluationData = {
+      "school_name": schoolName,
+      "grade": grade,
+      "division": division,
+      "student_name": studentName,
+      "roll_no": 0,
+      "attendance": attendance,
+      "evaluation_number": 1,
+      "time_of_eval": timestamp,
+      "year_of_eval": timestamp,
+      "instructor_name": "",
+      "image_id": "",
+      "skipping": 0,
+      "hit_balloon_up": 0,
+      "dribbling_ball_8": 0,
+      "dribbling_ball_O": 0,
+      "jump_symmetrically": 0,
+      "hop_9m_dominant_leg": 0,
+      "jump_asymmetrically": 0,
+      "ball_bounce_and_catch": 0,
+      "criss_cross_with_clap": 0,
+      "stand_on_dominant_leg": 0,
+      "hop_9m_nondominant_leg": 0,
+      "step_down_dominant_leg": "",
+      "step_over_dominant_leg": "",
+      "criss_cross_leg_forward": 0,
+      "jumping_jacks_with_clap": 0,
+      "criss_cross_without_clap": 0,
+      "hop_forward_dominant_leg": 0,
+      "stand_on_nondominant_leg": 0,
+      "step_down_nondominant_leg": "",
+      "step_over_nondominant_leg": "",
+      "jumping_jacks_without_clap": 0,
+      "hop_forward_nondominant_leg": 0,
+      "forward_backward_spread_legs": 0,
+      "alternate_forward_backward_legs": 0
+    };
 
-  log(exercise);
+    log(exercise);
 
-  // Map the current exercise to the corresponding API field
-  final apiField = questionToApiFieldMap[exercise];
-  if (apiField != null) {
-    if (type == 0) { // Yes/No question
-      evaluationData[apiField] = answer;
-    } else { // Numeric question
-      evaluationData[apiField] = answer as int;
+    // Map the current exercise to the corresponding API field
+    final apiField = questionToApiFieldMap[exercise];
+    if (apiField != null) {
+      if (type == 0) {
+        // Yes/No question
+        evaluationData[apiField] = answer;
+      } else {
+        // Numeric question
+        evaluationData[apiField] = answer as int;
+      }
+    }
+
+    // Call the API
+    final getIt = GetIt.instance;
+    final apiService = getIt<GolainApiService>();
+    final result = await apiService.postStudentEvaluation(evaluationData);
+    if (result) {
+      Utils.showSuccess('Evaluation submitted successfully');
+    } else {
+      Utils.showError('Failed to submit evaluation');
     }
   }
 
-  // Call the API
-  final getIt = GetIt.instance;
-  final apiService = getIt<GolainApiService>();
-  final result = await apiService.postStudentEvaluation(evaluationData);
-  if (result) {
-    Utils.showSuccess('Evaluation submitted successfully');
-  } else {
-    Utils.showError('Failed to submit evaluation');
+// Offline code to store evaluation data in Hive
+  Future<void> storeEvaluationInHive() async {
+    final prefs = await SharedPreferences.getInstance();
+    final schoolName = prefs.getString('school_name') ?? '';
+    final grade = prefs.getString('selectedGrade') ?? '';
+    final division = prefs.getString('selectedDivision') ?? '';
+    final studentName = prefs.getString('student') ?? '';
+    final attendance = prefs.getString('attendance') ?? '';
+    final timestamp = DateTime.now().toIso8601String() + '+05:30';
+    final imageUrl = prefs.getString('image_id') ?? '';
+
+    // Create the evaluation data map
+    final Map<String, dynamic> evaluationData = {
+      "school_name": schoolName,
+      "grade": grade,
+      "division": division,
+      "student_name": studentName,
+      "roll_no": 0, // You can replace this with the actual roll number
+      "attendance": attendance,
+      "evaluation_number": 1,
+      "time_of_eval": timestamp,
+      "year_of_eval": timestamp,
+      "instructor_name": "",
+      "image_id": imageUrl,
+      "skipping": 0,
+      "hit_balloon_up": 0,
+      "dribbling_ball_8": 0,
+      "dribbling_ball_O": 0,
+      "jump_symmetrically": 0,
+      "hop_9m_dominant_leg": 0,
+      "jump_asymmetrically": 0,
+      "ball_bounce_and_catch": 0,
+      "criss_cross_with_clap": 0,
+      "stand_on_dominant_leg": 0,
+      "hop_9m_nondominant_leg": 0,
+      "step_down_dominant_leg": "",
+      "step_over_dominant_leg": "",
+      "criss_cross_leg_forward": 0,
+      "jumping_jacks_with_clap": 0,
+      "criss_cross_without_clap": 0,
+      "hop_forward_dominant_leg": 0,
+      "stand_on_nondominant_leg": 0,
+      "step_down_nondominant_leg": "",
+      "step_over_nondominant_leg": "",
+      "jumping_jacks_without_clap": 0,
+      "hop_forward_nondominant_leg": 0,
+      "forward_backward_spread_legs": 0,
+      "alternate_forward_backward_legs": 0,
+    };
+
+    // Correctly map answers based on the type of the answer (either string or int)
+    final apiField = questionToApiFieldMap[exercise];
+    if (apiField != null) {
+      if (type == 0) {
+        // Yes/No question, store as string 'Yes' or 'No'
+        evaluationData[apiField] = answer;
+      } else {
+        // Numeric question, store as an integer
+        evaluationData[apiField] = int.tryParse(answer.toString()) ?? 0;
+      }
+    }
+
+    // Store the data in Hive
+    var box = await Hive.openBox('evaluationData');
+    await box.put('evaluationRecord', evaluationData);
+
+    print("Stored data in Hive: ${box.get('evaluationRecord')}");
+    log("Evaluation data stored in Hive successfully.");
+
+    Utils.showSuccess('Evaluation submitted successfully to Hive');
   }
-}
 
   void loadExercise() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -353,18 +431,53 @@ class _ManualExerciseWiseState extends State<ManualExerciseWise> {
                         ),
                   SizedBox(height: utils.screenHeight * 0.03),
                   ElevatedButton(
-                    onPressed: () async {
-                      await submitEvaluation();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ManualStudentsList(exerciseName: exercise),
-                        ),
-                      );
-                    },
                     style: utils.elevatedButtonStyle().copyWith(
                         backgroundColor:
                             const WidgetStatePropertyAll(Color(0xFF1E3D75))),
+                    onPressed: () async {
+                      // Check internet connectivity
+                      var connectivityResult =
+                          await Connectivity().checkConnectivity();
+
+                      // Assuming you want to handle actual internet connection, not just network status
+                      bool isConnected = false;
+                      if (connectivityResult != ConnectivityResult.none) {
+                        try {
+                          // Perform a small network request to check actual internet access
+                          final result =
+                              await InternetAddress.lookup('example.com');
+                          if (result.isNotEmpty &&
+                              result[0].rawAddress.isNotEmpty) {
+                            isConnected = true;
+                          }
+                        } catch (_) {
+                          isConnected = false;
+                        }
+                      }
+
+                      if (isConnected) {
+                        // Internet is available, submit to API
+                        await submitEvaluation();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ManualStudentsList(exerciseName: exercise),
+                          ),
+                        );
+                      } else {
+                        // Internet is not available, store data in Hive
+                        await storeEvaluationInHive();
+                        log("store data in hive if not connected");
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ManualStudentsList(exerciseName: exercise),
+                          ),
+                        );
+                      }
+                    },
                     child: Text(
                       'Yes',
                       style: GoogleFonts.inter(
@@ -374,6 +487,8 @@ class _ManualExerciseWiseState extends State<ManualExerciseWise> {
                       ),
                     ),
                   ),
+
+                 
                 ],
               ),
             ),

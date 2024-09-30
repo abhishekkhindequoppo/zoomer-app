@@ -55,7 +55,6 @@ class GolainApiService {
     }
   }
 
-
   Future<List<Map<String, dynamic>>> getStudentList(
       String schoolName, String grade, String division) async {
     final connectivityResult = await Connectivity().checkConnectivity();
@@ -288,7 +287,6 @@ class GolainApiService {
       }
     }
   }
-
 
   Future<void> syncEvaluationDataWithServer() async {
     try {

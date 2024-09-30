@@ -1,13 +1,10 @@
-import 'dart:io';
-
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:hive/hive.dart';
 import 'package:msap/features/manual_assessment/bloc/manual_bloc.dart';
 import 'package:msap/features/manual_assessment/exercise_wise.dart';
 import 'package:msap/features/manual_assessment/questions_screen.dart';
+import 'package:msap/features/manual_assessment/students.dart';
 import 'package:msap/features/profile/profile.dart';
 import 'package:msap/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,7 +15,10 @@ import 'dart:developer';
 class StudentDetailsScreen extends StatefulWidget {
   final String exerciseName;
 
-  const StudentDetailsScreen({super.key, this.exerciseName = ''});
+  const StudentDetailsScreen({
+    super.key,
+    this.exerciseName = ''
+  });
 
   @override
   State<StudentDetailsScreen> createState() => _StudentDetailsScreenState();
@@ -106,65 +106,6 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
     }
   }
 
-// offline code to store evaluation data in Hive
-  Future<void> storeAbsentEvaluationInHive() async {
-    final prefs = await SharedPreferences.getInstance();
-    final schoolName = prefs.getString('school_name') ?? '';
-    final grade = prefs.getString('selectedGrade') ?? '';
-    final division = prefs.getString('selectedDivision') ?? '';
-    final studentName = prefs.getString('student') ?? '';
-    final timestamp = DateTime.now().toIso8601String() + '+05:30';
-
-    final Map<String, dynamic> evaluationData = {
-      "school_name": schoolName,
-      "grade": grade,
-      "division": division,
-      "student_name": studentName,
-      "roll_no": 0,
-      "attendance": attendance,
-      "evaluation_number": 1,
-      "time_of_eval": timestamp,
-      "year_of_eval": timestamp,
-      "instructor_name": "",
-      "image_id": "",
-      "skipping": 0,
-      "hit_balloon_up": 0,
-      "dribbling_ball_8": 0,
-      "dribbling_ball_O": 0,
-      "jump_symmetrically": 0,
-      "hop_9m_dominant_leg": 0,
-      "jump_asymmetrically": 0,
-      "ball_bounce_and_catch": 0,
-      "criss_cross_with_clap": 0,
-      "stand_on_dominant_leg": 0,
-      "hop_9m_nondominant_leg": 0,
-      "step_down_dominant_leg": "",
-      "step_over_dominant_leg": "",
-      "criss_cross_leg_forward": 0,
-      "jumping_jacks_with_clap": 0,
-      "criss_cross_without_clap": 0,
-      "hop_forward_dominant_leg": 0,
-      "stand_on_nondominant_leg": 0,
-      "step_down_nondominant_leg": "",
-      "step_over_nondominant_leg": "",
-      "jumping_jacks_without_clap": 0,
-      "hop_forward_nondominant_leg": 0,
-      "forward_backward_spread_legs": 0,
-      "alternate_forward_backward_legs": 0
-      // Add all other fields
-    };
-
-// Store the data in Hive
-    var box = await Hive.openBox('evaluationData');
-    await box.put('evaluationRecord',
-        evaluationData); // Store the data using a key, such as 'evaluationRecord'
-    log(
-        "get from hive${box.get('evaluationRecord') as Map<String, dynamic>}"); // Retrieve the data using the key
-    log("evalution data stored in Hive");
-
-    Utils.showSuccess('Evaluation submitted successfully to hive');
-  }
-
   @override
   Widget build(BuildContext context) {
     final Utils utils = Utils(context);
@@ -187,7 +128,8 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                     builder: (context) => const QuestionsScreen(),
                   ),
                 );
-              } else if (state is Questions && exerciseName.isNotEmpty) {
+              } 
+              else if (state is Questions && exerciseName.isNotEmpty) {
                 log(widget.exerciseName);
                 Navigator.push(
                   context,
@@ -195,7 +137,8 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                     builder: (context) => const ManualExerciseWise(),
                   ),
                 );
-              } else if (state is Auth) {
+              }
+              else if (state is Auth) {
                 setState(() {
                   grade = state.grade;
                   studentName = state.studentName ?? '';
@@ -358,9 +301,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                           child: Text(
                             'Absent',
                             style: GoogleFonts.roboto(
-                              color: attendance == "Absent"
-                                  ? Colors.white
-                                  : Colors.black,
+                              color: attendance == "Absent" ? Colors.white : Colors.black,
                               fontWeight: FontWeight.w500,
                               fontSize: utils.subtitleSize * 0.7,
                             ),
@@ -395,9 +336,7 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                           child: Text(
                             'Mark Present',
                             style: GoogleFonts.roboto(
-                              color: attendance == "Present"
-                                  ? Colors.white
-                                  : Colors.black,
+                              color: attendance == "Present" ? Colors.white : Colors.black,
                               fontWeight: FontWeight.w500,
                               fontSize: utils.subtitleSize * 0.7,
                             ),
@@ -411,63 +350,20 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                     child: ElevatedButton(
                       style: utils.elevatedButtonStyle(),
                       onPressed: () async {
-                        // Check internet connectivity
-                        var connectivityResult =
-                            await Connectivity().checkConnectivity();
-
-                        bool isConnected = false;
-                        if (connectivityResult != ConnectivityResult.none) {
-                          try {
-                            // Perform a network request to check actual internet access
-                            final result =
-                                await InternetAddress.lookup('example.com');
-                            if (result.isNotEmpty &&
-                                result[0].rawAddress.isNotEmpty) {
-                              isConnected = true;
-                            }
-                          } catch (_) {
-                            isConnected = false;
-                          }
-                        }
-
-                        if (isConnected) {
-                          // Internet is available, submit the attendance
-                          if (attendance == "Absent") {
-                            await submitAbsentEvaluation();
-                            Navigator.pop(context); // Go back to student list
-                          } else if (attendance == "Present") {
-                            // Save attendance to SharedPreferences
-                            final SharedPreferences prefs =
-                                await SharedPreferences.getInstance();
-                            await prefs.setString('attendance', attendance);
-
-                            // Trigger the QuestionsEvent
-                            _manualBloc
-                                .add(QuestionsEvent(attendance: attendance));
-                          }
+                        if (attendance == "Absent") {
+                          await submitAbsentEvaluation();
+                          Navigator.pop(context); // Go back to student list
+                        } else if (attendance == "Present") {
+                          // Save attendance to SharedPreferences
+                          final SharedPreferences prefs = await SharedPreferences.getInstance();
+                          await prefs.setString('attendance', attendance);
+                          
+                          // Trigger the QuestionsEvent
+                          _manualBloc.add(QuestionsEvent(attendance: attendance));
                         } else {
-                          // Internet is not available, store the data in Hive
-                          if (attendance == "Absent") {
-                            await storeAbsentEvaluationInHive();
-                            Navigator.pop(
-                                context); // Go back to student list after storing offline
-                          } else if (attendance == "Present") {
-                            final SharedPreferences prefs =
-                                await SharedPreferences.getInstance();
-                            await prefs.setString('attendance', attendance);
-
-                            // Trigger the event even in offline mode
-                            _manualBloc
-                                .add(QuestionsEvent(attendance: attendance));
-                          }
-                        }
-
-                        // Handle case when no attendance is selected
-                        if (attendance == null || attendance.isEmpty) {
+                          // If no attendance is selected, show an error message
                           ScaffoldMessenger.of(context).showSnackBar(
-                         const   SnackBar(
-                                content:
-                                    Text('Please select attendance status')),
+                            SnackBar(content: Text('Please select attendance status')),
                           );
                         }
                       },
@@ -479,35 +375,6 @@ class _StudentDetailsScreenState extends State<StudentDetailsScreen> {
                         ),
                       ),
                     ),
-
-                    // ElevatedButton(
-                    //   style: utils.elevatedButtonStyle(),
-                    //   onPressed: () async {
-                    //     if (attendance == "Absent") {
-                    //       await submitAbsentEvaluation();
-                    //       Navigator.pop(context); // Go back to student list
-                    //     } else if (attendance == "Present") {
-                    //       // Save attendance to SharedPreferences
-                    //       final SharedPreferences prefs = await SharedPreferences.getInstance();
-                    //       await prefs.setString('attendance', attendance);
-
-                    //       // Trigger the QuestionsEvent
-                    //       _manualBloc.add(QuestionsEvent(attendance: attendance));
-                    //     } else {
-                    //       // If no attendance is selected, show an error message
-                    //       ScaffoldMessenger.of(context).showSnackBar(
-                    //         SnackBar(content: Text('Please select attendance status')),
-                    //       );
-                    //     }
-                    //   },
-                    //   child: Text(
-                    //     attendance == "Absent" ? 'Submit' : 'Start',
-                    //     style: GoogleFonts.inter(
-                    //       fontSize: utils.subtitleSize,
-                    //       fontWeight: FontWeight.w600,
-                    //     ),
-                    //   ),
-                    // ),
                   ),
                 ],
               );

@@ -72,7 +72,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => DivisionsScreen(selectedGrade: selectedGrade),
+                      builder: (context) =>
+                          DivisionsScreen(selectedGrade: selectedGrade),
                     ),
                   );
                 }
@@ -106,36 +107,35 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeader(BuildContext context, Utils utils) {
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      Text(
-        schoolName,
-        style: GoogleFonts.roboto(
-          color: Colors.black,
-          fontWeight: FontWeight.w600,
-          fontSize: utils.titleSize,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          schoolName,
+          style: GoogleFonts.roboto(
+            color: Colors.black,
+            fontWeight: FontWeight.w600,
+            fontSize: utils.titleSize,
+          ),
         ),
-      ),
-      IconButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const ProfileScreen(),
-            ),
-          );
-        },
-        icon: Icon(
-          Icons.settings,
-          size: utils.iconSize,
-          color: Colors.black,
+        IconButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ProfileScreen(),
+              ),
+            );
+          },
+          icon: Icon(
+            Icons.settings,
+            size: utils.iconSize,
+            color: Colors.black,
+          ),
         ),
-      ),
-    ],
-  );
-}
-
+      ],
+    );
+  }
 
   Widget _buildGradesList(HomeState state, Utils utils) {
     if (state is HomeLoading) {
